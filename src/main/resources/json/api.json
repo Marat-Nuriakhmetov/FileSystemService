@@ -1,0 +1,66 @@
+{
+  "openrpc": "1.2.4",
+  "info": {
+    "version": "1.0.0",
+    "title": "FileSystemService"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080"
+    }
+  ],
+  "methods": [
+    {
+      "name": "getFileInfo",
+      "summary": "Retrieve information about a file (name, path, size)",
+      "params": [
+        {
+          "name": "path",
+          "description": "file path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minimum": 1,
+            "maximum": 256
+          }
+        }
+      ],
+      "result": {
+        "name": "fileInfo",
+        "description": "Information about the file",
+        "schema": {
+          "$ref": "#/components/schemas/FileInfo"
+        }
+      },
+      "errors": [
+        {
+          "code": 100,
+          "message": "File not found"
+        }
+      ]
+    }
+  ],
+  "components": {
+    "schemas": {
+      "FileInfo": {
+        "type": "object",
+        "required": [
+          "name",
+          "path",
+          "size"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,8 +1,10 @@
 package jb.test;
 
+import jb.test.dto.FileInfo;
+
 // Service interface
 @SuppressWarnings("unused")
 public interface FileService {
-    String getFileInfo(String path);
+    FileInfo getFileInfo(String path);
     boolean createFile(String path);
 }
