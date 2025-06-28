@@ -1,9 +1,18 @@
 plugins {
     id("java")
+    id("application")
 }
 
 group = "jb.test"
 version = "1.0-SNAPSHOT"
+
+sourceSets.main {
+    resources.srcDirs("src/resources")
+}
+
+application {
+    mainClass = "jb.test.Main"
+}
 
 repositories {
     mavenCentral()
