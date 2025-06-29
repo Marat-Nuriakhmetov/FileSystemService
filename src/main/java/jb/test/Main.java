@@ -7,6 +7,7 @@ import org.eclipse.jetty.servlet.ServletHolder;
 // Main application
 public class Main {
     public static void main(String[] args) throws Exception {
+        // TODO add root folder via env var or args
         // Create service instance
         FileService fileService = new FileServiceImpl();
 

@@ -1,54 +1,309 @@
 {
-  "openrpc": "1.2.4",
+  "openrpc": "1.2.6",
   "info": {
+    "title": "File System Service",
     "version": "1.0.0",
-    "title": "FileSystemService"
+    "description": "JSON-RPC 2.0 API for file system operations"
   },
-  "servers": [
-    {
-      "url": "http://localhost:8080"
-    }
-  ],
   "methods": [
     {
       "name": "getFileInfo",
-      "summary": "Retrieve information about a file (name, path, size)",
+      "description": "Retrieve information about a file or directory",
       "params": [
         {
           "name": "path",
-          "description": "file path",
+          "description": "Path to the file or directory",
           "required": true,
           "schema": {
-            "type": "string",
-            "minimum": 1,
-            "maximum": 256
+            "type": "string"
           }
         }
       ],
       "result": {
-        "name": "fileInfo",
-        "description": "Information about the file",
+        "name": "FileInfo",
         "schema": {
-          "$ref": "#/components/schemas/FileInfo"
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Name of the file or directory"
+            },
+            "path": {
+              "type": "string",
+              "description": "Full path"
+            },
+            "type": {
+              "type": "string",
+              "enum": ["FILE", "DIRECTORY"],
+              "description": "Type of the entry"
+            },
+            "size": {
+              "type": "integer",
+              "format": "int64",
+              "description": "Size in bytes"
+            },
+            "lastModified": {
+              "type": "integer",
+              "format": "int64",
+              "description": "Last modification timestamp"
+            }
+          },
+          "required": ["name", "path", "type", "size", "lastModified"]
         }
-      },
-      "errors": [
+      }
+    },
+    {
+      "name": "listDirectory",
+      "description": "Retrieve information about the children inside a folder",
+      "params": [
         {
-          "code": 100,
-          "message": "File not found"
+          "name": "path",
+          "description": "Path to the directory",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
         }
-      ]
+      ],
+      "result": {
+        "name": "DirectoryListing",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "entries": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/FileInfo"
+              }
+            },
+            "totalCount": {
+              "type": "integer",
+              "description": "Total number of entries"
+            }
+          },
+          "required": ["entries", "totalCount"]
+        }
+      }
+    },
+    {
+      "name": "create",
+      "description": "Create an empty file or directory",
+      "params": [
+        {
+          "name": "path",
+          "description": "Path to create",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "type",
+          "description": "Type of entry to create",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "enum": ["FILE", "DIRECTORY"]
+          }
+        }
+      ],
+      "result": {
+        "name": "CreateResult",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "success": {
+              "type": "boolean"
+            },
+            "path": {
+              "type": "string",
+              "description": "Path of created entry"
+            }
+          },
+          "required": ["success", "path"]
+        }
+      }
+    },
+    {
+      "name": "delete",
+      "description": "Delete a file or directory",
+      "params": [
+        {
+          "name": "path",
+          "description": "Path to delete",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "recursive",
+          "description": "Delete directory contents recursively",
+          "required": false,
+          "schema": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      ],
+      "result": {
+        "name": "DeleteResult",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "success": {
+              "type": "boolean"
+            }
+          },
+          "required": ["success"]
+        }
+      }
+    },
+    {
+      "name": "move",
+      "description": "Move/copy a file or directory",
+      "params": [
+        {
+          "name": "sourcePath",
+          "description": "Source path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "targetPath",
+          "description": "Target path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "operation",
+          "description": "Operation type",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "enum": ["MOVE", "COPY"]
+          }
+        }
+      ],
+      "result": {
+        "name": "MoveResult",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "success": {
+              "type": "boolean"
+            },
+            "newPath": {
+              "type": "string",
+              "description": "New path after operation"
+            }
+          },
+          "required": ["success", "newPath"]
+        }
+      }
+    },
+    {
+      "name": "append",
+      "description": "Append data to a file",
+      "params": [
+        {
+          "name": "path",
+          "description": "Path to the file",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "data",
+          "description": "Data to append (base64 encoded)",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "base64"
+          }
+        }
+      ],
+      "result": {
+        "name": "AppendResult",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "success": {
+              "type": "boolean"
+            },
+            "newSize": {
+              "type": "integer",
+              "format": "int64",
+              "description": "New file size after append"
+            }
+          },
+          "required": ["success", "newSize"]
+        }
+      }
+    },
+    {
+      "name": "read",
+      "description": "Read N bytes from a file at specific offset",
+      "params": [
+        {
+          "name": "path",
+          "description": "Path to the file",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "offset",
+          "description": "Starting offset",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        },
+        {
+          "name": "length",
+          "description": "Number of bytes to read",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1
+          }
+        }
+      ],
+      "result": {
+        "name": "ReadResult",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "data": {
+              "type": "string",
+              "format": "base64",
+              "description": "Base64 encoded file content"
+            },
+            "bytesRead": {
+              "type": "integer",
+              "format": "int32",
+              "description": "Number of bytes actually read"
+            }
+          },
+          "required": ["data", "bytesRead"]
+        }
+      }
     }
   ],
   "components": {
     "schemas": {
       "FileInfo": {
         "type": "object",
-        "required": [
-          "name",
-          "path",
-          "size"
-        ],
         "properties": {
           "name": {
             "type": "string"
@@ -56,10 +311,46 @@
           "path": {
             "type": "string"
           },
+          "type": {
+            "type": "string",
+            "enum": ["FILE", "DIRECTORY"]
+          },
           "size": {
-            "type": "integer"
+            "type": "integer",
+            "format": "int64"
+          },
+          "lastModified": {
+            "type": "integer",
+            "format": "int64"
           }
-        }
+        },
+        "required": ["name", "path", "type", "size", "lastModified"]
+      }
+    },
+    "errorCodes": {
+      "PathNotFound": {
+        "code": -32000,
+        "message": "Path not found"
+      },
+      "AccessDenied": {
+        "code": -32001,
+        "message": "Access denied"
+      },
+      "InvalidOperation": {
+        "code": -32002,
+        "message": "Invalid operation"
+      },
+      "PathAlreadyExists": {
+        "code": -32003,
+        "message": "Path already exists"
+      },
+      "NotADirectory": {
+        "code": -32004,
+        "message": "Not a directory"
+      },
+      "NotAFile": {
+        "code": -32005,
+        "message": "Not a file"
       }
     }
   }
