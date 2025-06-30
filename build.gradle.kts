@@ -3,7 +3,7 @@ plugins {
     id("application")
 }
 
-group = "jb.test"
+group = "com.fileservice"
 version = "1.0-SNAPSHOT"
 
 sourceSets.main {
@@ -11,7 +11,7 @@ sourceSets.main {
 }
 
 application {
-    mainClass = "jb.test.Main"
+    mainClass = "com.fileservice.Application"
 }
 
 repositories {
@@ -26,6 +26,12 @@ dependencies {
     implementation("javax.servlet:javax.servlet-api:4.0.1")
     implementation("org.eclipse.jetty:jetty-server:11.0.18")
     implementation("org.eclipse.jetty:jetty-servlet:11.0.18")
+    implementation("com.google.inject:guice:7.0.0")
+    implementation("javax.annotation:javax.annotation-api:1.3.2")
+    implementation("log4j:log4j:1.2.17")
+    compileOnly("org.projectlombok:lombok:1.18.38")
+    implementation("com.thetransactioncompany:jsonrpc2-client:2.1.1")
+    annotationProcessor("org.projectlombok:lombok:1.18.38")
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
 }

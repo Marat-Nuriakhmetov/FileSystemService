@@ -1,4 +1,4 @@
-package jb.test;
+package com.fileservice.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.arteam.simplejsonrpc.server.JsonRpcServer;
@@ -26,7 +26,7 @@ public class JsonRpcServlet extends HttpServlet {
             throws IOException {
 
         // Set response content type
-        resp.setContentType("application/json");
+        resp.setContentType("application/json+rpc");
         resp.setCharacterEncoding("UTF-8");
 
         // Handle JSON-RPC request
