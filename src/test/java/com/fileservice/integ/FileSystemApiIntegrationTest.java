@@ -57,13 +57,16 @@ public class FileSystemApiIntegrationTest {
         assertInstanceOf(Boolean.class, result);
         assertTrue((Boolean) result);
 
+        // generate a word of length > 8192 - buffer size in java.nio.file.Files
+        String word =  String.join("", Collections.nCopies(100, "1234567890"));
+
         ExecutorService executorService = Executors.newFixedThreadPool(10);
 
         for (int i = 0; i < 10000; i++) {
-            executorService.execute(new Runnable() {
+            executorService.submit(new Runnable() {
                 @Override
                 public void run() {
-                    Object result = callServer("append", Arrays.asList("test.txt", "123"));
+                    Object result = callServer("append", Arrays.asList("test.txt", word));
                     assertInstanceOf(Boolean.class, result);
                     assertTrue((Boolean) result);
                 }
@@ -75,10 +78,10 @@ public class FileSystemApiIntegrationTest {
         executorService.awaitTermination(1, TimeUnit.MINUTES);
 
         // read file
-        Object text = callServer("read", Arrays.asList("test.txt", 0, 10000 * 3));
+        Object text = callServer("read", Arrays.asList("test.txt", 0, 1000 * word.length()));
         assertInstanceOf(String.class, text);
-        assertEquals(30000, ((String) text).length());
-        assertEquals(String.join("", Collections.nCopies(10000, "123")), ((String) text));
+        assertEquals(1000 * word.length(), ((String) text).length());
+        assertEquals(String.join("", Collections.nCopies(1000, word)), ((String) text));
 
         // delete file
         result = callServer("delete", Arrays.asList("test.txt", true));
@@ -126,10 +129,10 @@ public class FileSystemApiIntegrationTest {
 
         // Print response result / error
 
-        if (response.indicatesSuccess())
-            System.out.println(response.getResult());
-        else
-            System.out.println(response.getError().getMessage());
+        //if (response.indicatesSuccess())
+        //    System.out.println(response.getResult());
+        //else
+        //    System.out.println(response.getError().getMessage());
 
         return response.getResult();
     }
