@@ -1,143 +1,225 @@
 package com.fileservice.service;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 
-import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class FileReadServiceTest {
 
     private FileReadService fileReadService;
+
     @TempDir
-    Path tempDir; // JUnit will create and clean up this temporary directory
+    Path tempDir;
 
     @BeforeEach
     void setUp() {
-        fileReadService = new FileReadService();
+        fileReadService = new FileReadService(tempDir);
     }
 
+    // Constructor Tests
     @Test
-    void shouldReadContentFromValidFile() throws IOException {
-        // Arrange
+    void constructor_WithNullRootDirectory_ThrowsException() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new FileReadService(null));
+    }
+
+
+    // Basic Read Tests
+    @Test
+    void read_EntireFile_Success() throws IOException {
+        // Given
         String content = "Hello, World!";
-        File testFile = createTestFile(content);
+        Path file = createFile("test.txt", content);
 
-        // Act
-        String result = fileReadService.read(testFile.getPath(), 0, content.length());
+        // When
+        String result = fileReadService.read(file.toString(), 0, content.length());
 
-        // Assert
+        // Then
         assertEquals(content, result);
     }
 
     @Test
-    void shouldReadPartialContent() throws IOException {
-        // Arrange
+    void read_PartialContent_Success() throws IOException {
+        // Given
         String content = "Hello, World!";
-        File testFile = createTestFile(content);
+        Path file = createFile("test.txt", content);
 
-        // Act
-        String result = fileReadService.read(testFile.getPath(), 7, 5);
+        // When
+        String result = fileReadService.read(file.toString(), 7, 5);
 
-        // Assert
+        // Then
         assertEquals("World", result);
     }
 
-    @Test
-    void shouldThrowExceptionWhenFileNotFound() {
-        // Arrange
-        String nonExistentPath = tempDir.resolve("non-existent.txt").toString();
-
-        // Act & Assert
-        assertThrows(RuntimeException.class, () ->
-                fileReadService.read(nonExistentPath, 0, 10)
-        );
+    // Parameter Validation Tests
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {" ", "\t", "\n"})
+    void read_InvalidPath_ThrowsException(String invalidPath) {
+        assertThrows(IllegalArgumentException.class,
+                () -> fileReadService.read(invalidPath, 0, 10));
     }
 
     @Test
-    void shouldHandleEmptyFile() throws IOException {
-        // Arrange
-        File emptyFile = createTestFile("");
+    void read_NegativeOffset_ThrowsException() throws IOException {
+        // Given
+        Path file = createFile("test.txt", "content");
 
-        // Act
-        String result = fileReadService.read(emptyFile.getPath(), 0, 0);
+        // When & Then
+        assertThrows(IllegalArgumentException.class,
+                () -> fileReadService.read(file.toString(), -1, 10));
+    }
 
-        // Assert
+    @Test
+    void read_NegativeLength_ThrowsException() throws IOException {
+        // Given
+        Path file = createFile("test.txt", "content");
+
+        // When & Then
+        assertThrows(IllegalArgumentException.class,
+                () -> fileReadService.read(file.toString(), 0, -1));
+    }
+
+    @Test
+    void read_LengthExceedsMaximum_ThrowsException() throws IOException {
+        // Given
+        Path file = createFile("test.txt", "content");
+        int tooLarge = 1024 * 1024 + 1;
+
+        // When & Then
+        assertThrows(IllegalArgumentException.class,
+                () -> fileReadService.read(file.toString(), 0, tooLarge));
+    }
+
+    // Security Tests
+    @Test
+    void read_PathOutsideRoot_ThrowsException() throws IOException {
+        // Given
+        Path outsidePath = tempDir.getParent().resolve("outside.txt");
+        Files.writeString(outsidePath, "content");
+
+        // When & Then
+        assertThrows(SecurityException.class,
+                () -> fileReadService.read(outsidePath.toString(), 0, 10));
+    }
+
+    // Edge Cases
+    @Test
+    void read_EmptyFile_ReturnsEmptyString() throws IOException {
+        // Given
+        Path file = createFile("empty.txt", "");
+
+        // When
+        String result = fileReadService.read(file.toString(), 0, 10);
+
+        // Then
         assertEquals("", result);
     }
 
     @Test
-    void shouldThrowExceptionWhenOffsetBeyondFileSize() throws IOException {
-        // Arrange
-        String content = "Hello";
-        File testFile = createTestFile(content);
+    void read_OffsetBeyondFileSize_ThrowsException() throws IOException {
+        // Given
+        Path file = createFile("test.txt", "content");
 
-        // Act & Assert
-        assertThrows(RuntimeException.class, () ->
-                fileReadService.read(testFile.getPath(), 10, 1)
-        );
+        // When & Then
+        assertThrows(IllegalArgumentException.class,
+                () -> fileReadService.read(file.toString(), 100, 10));
     }
 
     @Test
-    void shouldHandleZeroLengthRead() throws IOException {
-        // Arrange
-        String content = "Hello";
-        File testFile = createTestFile(content);
+    void read_NonexistentFile_ThrowsException() {
+        // Given
+        Path nonexistentFile = tempDir.resolve("nonexistent.txt");
 
-        // Act
-        String result = fileReadService.read(testFile.getPath(), 0, 0);
+        // When & Then
+        assertThrows(IOException.class,
+                () -> fileReadService.read(nonexistentFile.toString(), 0, 10));
+    }
 
-        // Assert
-        assertEquals("", result);
+    // Special Cases
+    @Test
+    void read_Directory_ThrowsException() throws IOException {
+        // Given
+        Path directory = Files.createDirectory(tempDir.resolve("testDir"));
+
+        // When & Then
+        assertThrows(IOException.class,
+                () -> fileReadService.read(directory.toString(), 0, 10));
+    }
+
+    // isReadable Tests
+    @Test
+    void isReadable_ExistingFile_ReturnsTrue() throws IOException {
+        // Given
+        Path file = createFile("test.txt", "content");
+
+        // When & Then
+        assertTrue(fileReadService.isReadable(file.toString()));
     }
 
     @Test
-    void shouldReadUpToEndOfFile() throws IOException {
-        // Arrange
-        String content = "Hello, World!";
-        File testFile = createTestFile(content);
+    void isReadable_NonexistentFile_ReturnsFalse() {
+        // Given
+        Path nonexistentFile = tempDir.resolve("nonexistent.txt");
 
-        // Act
-        String result = fileReadService.read(testFile.getPath(), 7, 100);
-
-        // Assert
-        assertEquals("World!", result);
+        // When & Then
+        assertFalse(fileReadService.isReadable(nonexistentFile.toString()));
     }
 
     @Test
-    void shouldHandleNegativeOffset() throws IOException {
-        // Arrange
-        String content = "Hello";
-        File testFile = createTestFile(content);
+    void isReadable_Directory_ReturnsFalse() throws IOException {
+        // Given
+        Path directory = Files.createDirectory(tempDir.resolve("testDir"));
 
-        // Act & Assert
-        assertThrows(RuntimeException.class, () ->
-                fileReadService.read(testFile.getPath(), -1, 5)
-        );
+        // When & Then
+        assertFalse(fileReadService.isReadable(directory.toString()));
     }
 
-    @Test
-    void shouldHandleNegativeLength() throws IOException {
-        // Arrange
-        String content = "Hello";
-        File testFile = createTestFile(content);
-
-        // Act & Assert
-        assertThrows(RuntimeException.class, () ->
-                fileReadService.read(testFile.getPath(), 0, -1)
-        );
-    }
-
-    // Helper method to create test file
-    private File createTestFile(String content) throws IOException {
-        File file = tempDir.resolve("test.txt").toFile();
-        try (FileWriter writer = new FileWriter(file)) {
-            writer.write(content);
-        }
+    // Helper Methods
+    private Path createFile(String fileName, String content) throws IOException {
+        Path file = tempDir.resolve(fileName);
+        Files.writeString(file, content, StandardCharsets.UTF_8);
         return file;
+    }
+
+    @Test
+    void read_LargeFile_Success() throws IOException {
+        // Given
+        StringBuilder largeContent = new StringBuilder();
+        for (int i = 0; i < 1000; i++) {
+            largeContent.append("Line ").append(i).append("\n");
+        }
+        Path file = createFile("large.txt", largeContent.toString());
+
+        // When
+        String result = fileReadService.read(file.toString(), 100, 1000);
+
+        // Then
+        assertEquals(largeContent.substring(100, 1100), result);
+    }
+
+    @Test
+    void read_MultipleReadsFromSameFile_Success() throws IOException {
+        // Given
+        String content = "Hello, World!";
+        Path file = createFile("test.txt", content);
+
+        // When & Then
+        assertEquals("Hello", fileReadService.read(file.toString(), 0, 5));
+        assertEquals("World", fileReadService.read(file.toString(), 7, 5));
+        assertEquals("!", fileReadService.read(file.toString(), 12, 1));
     }
 }
