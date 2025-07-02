@@ -14,7 +14,7 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 
-import static com.fileservice.config.Constants.ROOT_DIRECTORY_NAME;
+import static com.fileservice.config.Constants.BEAN_NAME_ROOT_DIRECTORY;
 
 /**
  * Service for retrieving file information from the file system.
@@ -25,7 +25,7 @@ public class FileGetInfoService extends BaseFileService {
     private static final Logger LOGGER = LoggerFactory.getLogger(FileGetInfoService.class);
 
     @Inject
-    public FileGetInfoService(@Named(ROOT_DIRECTORY_NAME) Path rootDirectory) {
+    public FileGetInfoService(@Named(BEAN_NAME_ROOT_DIRECTORY) Path rootDirectory) {
         super(rootDirectory);
     }
 

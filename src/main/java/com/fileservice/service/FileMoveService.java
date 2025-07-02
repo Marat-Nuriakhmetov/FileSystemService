@@ -10,7 +10,7 @@ import java.io.IOException;
 import java.nio.file.*;
 import java.util.logging.Level;
 
-import static com.fileservice.config.Constants.ROOT_DIRECTORY_NAME;
+import static com.fileservice.config.Constants.BEAN_NAME_ROOT_DIRECTORY;
 
 /**
  * Service for moving files and directories within the file system.
@@ -21,7 +21,7 @@ public class FileMoveService  extends BaseFileService {
     private static final Logger LOGGER = LoggerFactory.getLogger(FileMoveService.class);
 
     @Inject
-    public FileMoveService(@Named(ROOT_DIRECTORY_NAME) Path rootDirectory) {
+    public FileMoveService(@Named(BEAN_NAME_ROOT_DIRECTORY) Path rootDirectory) {
         super(rootDirectory);
     }
 

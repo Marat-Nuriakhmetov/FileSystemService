@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static com.fileservice.config.Constants.ROOT_DIRECTORY_NAME;
+import static com.fileservice.config.Constants.BEAN_NAME_ROOT_DIRECTORY;
 
 /**
  * Service for listing directory contents with detailed file information.
@@ -28,7 +28,7 @@ public class DirectoryListService extends BaseFileService {
     @Inject
     public DirectoryListService(
             FileGetInfoService fileGetInfoService,
-            @Named(ROOT_DIRECTORY_NAME) Path rootDirectory) {
+            @Named(BEAN_NAME_ROOT_DIRECTORY) Path rootDirectory) {
         super(rootDirectory);
         this.fileGetInfoService = fileGetInfoService;
     }

@@ -13,7 +13,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import static com.fileservice.config.Constants.ROOT_DIRECTORY_NAME;
+import static com.fileservice.config.Constants.BEAN_NAME_ROOT_DIRECTORY;
 
 /**
  * Service for reading file contents with offset and length support.
@@ -25,7 +25,7 @@ public class FileReadService  extends BaseFileService {
     private static final int MAX_READ_LENGTH = 1024 * 1024; // 1MB maximum read size
 
     @Inject
-    public FileReadService(@Named(ROOT_DIRECTORY_NAME) Path rootDirectory) {
+    public FileReadService(@Named(BEAN_NAME_ROOT_DIRECTORY) Path rootDirectory) {
         super(rootDirectory);
     }
 

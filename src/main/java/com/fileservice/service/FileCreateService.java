@@ -11,7 +11,7 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import static com.fileservice.config.Constants.ROOT_DIRECTORY_NAME;
+import static com.fileservice.config.Constants.BEAN_NAME_ROOT_DIRECTORY;
 
 /**
  * Service for creating files and directories.
@@ -22,7 +22,7 @@ public class FileCreateService extends BaseFileService {
     private static final Logger LOGGER = LoggerFactory.getLogger(FileCreateService.class);
 
     @Inject
-    public FileCreateService(@Named(ROOT_DIRECTORY_NAME) Path rootDirectory) {
+    public FileCreateService(@Named(BEAN_NAME_ROOT_DIRECTORY) Path rootDirectory) {
         super(rootDirectory);
     }
 

@@ -16,7 +16,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-import static com.fileservice.config.Constants.ROOT_DIRECTORY_NAME;
+import static com.fileservice.config.Constants.BEAN_NAME_ROOT_DIRECTORY;
 
 /**
  * Service for concurrent file writing operations with memory leak prevention.
@@ -50,7 +50,7 @@ public class FileWriteService  extends BaseFileService {
     }
 
     @Inject
-    public FileWriteService(@Named(ROOT_DIRECTORY_NAME) Path rootDirectory) {
+    public FileWriteService(@Named(BEAN_NAME_ROOT_DIRECTORY) Path rootDirectory) {
         super(rootDirectory);
         this.locks = new ConcurrentHashMap<>();
         this.cleanupExecutor = Executors.newSingleThreadScheduledExecutor(r -> {

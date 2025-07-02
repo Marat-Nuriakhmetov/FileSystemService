@@ -9,7 +9,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.file.*;
 
-import static com.fileservice.config.Constants.ROOT_DIRECTORY_NAME;
+import static com.fileservice.config.Constants.BEAN_NAME_ROOT_DIRECTORY;
 
 /**
  * Service for copying files within a designated root directory.
@@ -52,7 +52,7 @@ public class FileCopyService  extends BaseFileService {
      * @throws IllegalArgumentException if rootDirectory is null or empty
      */
     @Inject
-    public FileCopyService(@Named(ROOT_DIRECTORY_NAME) Path rootDirectory) {
+    public FileCopyService(@Named(BEAN_NAME_ROOT_DIRECTORY) Path rootDirectory) {
         super(rootDirectory);
     }
 

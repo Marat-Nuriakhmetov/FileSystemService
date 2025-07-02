@@ -11,7 +11,8 @@ import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import static com.fileservice.config.Constants.ROOT_DIRECTORY_NAME;
+import static com.fileservice.config.Constants.ENV_VARIABLE_FILE_OPERATION_SERVICE_ROOT_DIR;
+import static com.fileservice.config.Constants.BEAN_NAME_ROOT_DIRECTORY;
 
 /**
  * Guice module configuration for the File Service application.
@@ -29,13 +30,13 @@ import static com.fileservice.config.Constants.ROOT_DIRECTORY_NAME;
  * <pre>
  *
  * // Linux/Mac:
- * export root.dir=/path/to/root
+ * export FILE_OPERATION_SERVICE_ROOT_DIR=/path/to/root
  *
  * // Windows:
- * set root.dir=C:\path\to\root
+ * set FILE_OPERATION_SERVICE_ROOT_DIR=C:\path\to\root
  *
  * // Docker:
- * ENV root.dir=/app/data
+ * ENV FILE_OPERATION_SERVICE_ROOT_DIR=/app/data
  * </pre>
  *
  * <p>Usage example:
@@ -48,10 +49,6 @@ import static com.fileservice.config.Constants.ROOT_DIRECTORY_NAME;
  * The root directory serves as a security boundary for all file operations.
  * Operations are restricted to this directory and its subdirectories to prevent
  * unauthorized access to other parts of the file system.
- *
- * <p>Thread safety:
- * This module is thread-safe and can be used to create thread-safe service instances.
- * All provided dependencies are designed for concurrent access.
  *
  * @see com.google.inject.AbstractModule
  */
@@ -77,7 +74,7 @@ public class AppModule extends AbstractModule {
      * <p>Usage example:
      * <pre>
      * // Set environment variable
-     * export root.dir=/path/to/root
+     * export FILE_OPERATION_SERVICE_ROOT_DIR=/path/to/root
      *
      * // The method will provide a validated Path object
      * Path rootDir = provideRootDirectory();
@@ -97,9 +94,9 @@ public class AppModule extends AbstractModule {
      * @see Files
      */
     @Provides
-    @Named(ROOT_DIRECTORY_NAME)
+    @Named(BEAN_NAME_ROOT_DIRECTORY)
     public Path provideRootDirectory() {
-        String rootDirectory = System.getenv("root.dir");
+        String rootDirectory = System.getenv(ENV_VARIABLE_FILE_OPERATION_SERVICE_ROOT_DIR);
 
         if (rootDirectory == null || rootDirectory.trim().isEmpty()) {
             throw new IllegalArgumentException("Root directory cannot be null or empty");
