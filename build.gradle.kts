@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "com.fileservice"
-version = "1.0-SNAPSHOT"
+version = "1.0.0"
 
 sourceSets.main {
     resources.srcDirs("src/resources")
