@@ -1,6 +1,7 @@
 plugins {
     id("java")
     id("application")
+    id("com.gradleup.shadow") version "8.3.0"
 }
 
 group = "com.fileservice"
@@ -8,6 +9,21 @@ version = "1.0-SNAPSHOT"
 
 sourceSets.main {
     resources.srcDirs("src/resources")
+}
+
+tasks {
+    jar {
+        manifest {
+            attributes["Main-Class"] = "com.fileservice.Application"
+        }
+    }
+    shadowJar {
+        archiveClassifier = "shadow"
+        archiveFileName = "fileservice.jar"
+        manifest {
+            attributes["Main-Class"] = "com.fileservice.Application"
+        }
+    }
 }
 
 application {
@@ -46,10 +62,4 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
-}
-
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
-    }
 }
