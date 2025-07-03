@@ -1,7 +1,10 @@
 package com.fileservice.service.lock;
 
+import com.fileservice.service.DirectoryListService;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.params.SetParams;
@@ -9,8 +12,6 @@ import redis.clients.jedis.params.SetParams;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.time.Duration;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * Service for managing distributed locks using Redis.
@@ -19,11 +20,9 @@ import java.util.logging.Logger;
  */
 @Singleton
 public class DistributedLockService {
-    private static final Logger LOGGER = Logger.getLogger(DistributedLockService.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(DirectoryListService.class);
 
-    private static final String LOCK_PREFIX = "lock:";
     private static final Duration DEFAULT_LOCK_TIMEOUT = Duration.ofSeconds(30);
-    private static final Duration LOCK_EXTENSION_INTERVAL = Duration.ofSeconds(10);
     private static final int MAX_RETRY_ATTEMPTS = 3;
     private static final long RETRY_DELAY_MS = 1000;
 
@@ -38,65 +37,23 @@ public class DistributedLockService {
      * Represents a distributed lock that can be used in a try-with-resources block.
      */
     public class DistributedLock implements AutoCloseable {
-        private final String lockKey;
-        private final String lockValue;
-        private final Thread extensionThread;
-        private volatile boolean valid = true;
+        private final String resourceId;
 
-        private DistributedLock(String lockKey, String lockValue) {
-            this.lockKey = lockKey;
-            this.lockValue = lockValue;
-            this.extensionThread = createExtensionThread();
-            this.extensionThread.start();
-        }
-
-        private Thread createExtensionThread() {
-            Thread thread = new Thread(() -> {
-                while (valid) {
-                    try {
-                        Thread.sleep(LOCK_EXTENSION_INTERVAL.toMillis());
-                        if (valid) {
-                            extendLock();
-                        }
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        break;
-                    }
-                }
-            });
-            thread.setDaemon(true);
-            thread.setName("Lock-Extension-" + lockKey);
-            return thread;
-        }
-
-        private void extendLock() {
-            try (Jedis jedis = jedisPool.getResource()) {
-                String currentValue = jedis.get(lockKey);
-                if (lockValue.equals(currentValue)) {
-                    jedis.expire(lockKey, DEFAULT_LOCK_TIMEOUT.getSeconds());
-                    LOGGER.fine("Extended lock: " + lockKey);
-                }
-            } catch (Exception e) {
-                LOGGER.log(Level.WARNING, "Failed to extend lock: " + lockKey, e);
-            }
+        private DistributedLock(String resourceId) {
+            this.resourceId = resourceId;
         }
 
         @Override
         public void close() {
-            valid = false;
-            extensionThread.interrupt();
             releaseLock();
         }
 
         private void releaseLock() {
             try (Jedis jedis = jedisPool.getResource()) {
-                String currentValue = jedis.get(lockKey);
-                if (lockValue.equals(currentValue)) {
-                    jedis.del(lockKey);
-                    LOGGER.fine("Released lock: " + lockKey);
-                }
+                jedis.del(resourceId);
+                LOGGER.trace("Released lock: {}", resourceId);
             } catch (Exception e) {
-                LOGGER.log(Level.WARNING, "Failed to release lock: " + lockKey, e);
+                LOGGER.warn("Failed to release lock: {}",  resourceId, e);
             }
         }
     }
@@ -120,20 +77,16 @@ public class DistributedLockService {
      * @return a DistributedLock instance that must be closed after use
      * @throws LockAcquisitionException if the lock cannot be acquired
      */
-    public DistributedLock acquireLock(String resourceId, Duration timeout)
+    private DistributedLock acquireLock(String resourceId, Duration timeout)
             throws LockAcquisitionException {
-        String lockKey = LOCK_PREFIX + resourceId;
-        String lockValue = generateLockValue();
-
         for (int attempt = 1; attempt <= MAX_RETRY_ATTEMPTS; attempt++) {
             try {
-                if (tryAcquireLock(lockKey, lockValue, timeout)) {
-                    LOGGER.fine("Acquired lock: " + lockKey);
-                    return new DistributedLock(lockKey, lockValue);
+                if (tryAcquireLock(resourceId, timeout)) {
+                    LOGGER.trace("Acquired lock: {}", resourceId);
+                    return new DistributedLock(resourceId);
                 }
             } catch (Exception e) {
-                LOGGER.log(Level.WARNING,
-                        "Failed to acquire lock: " + lockKey + ", attempt " + attempt, e);
+                LOGGER.warn("Failed to acquire lock: {}, attempt {}", resourceId, attempt, e);
             }
 
             if (attempt < MAX_RETRY_ATTEMPTS) {
@@ -150,13 +103,13 @@ public class DistributedLockService {
                 "Failed to acquire lock after " + MAX_RETRY_ATTEMPTS + " attempts");
     }
 
-    private boolean tryAcquireLock(String lockKey, String lockValue, Duration timeout) {
+    private boolean tryAcquireLock(String resourceId, Duration timeout) {
         try (Jedis jedis = jedisPool.getResource()) {
             SetParams params = new SetParams()
                     .nx()
                     .ex(timeout.getSeconds());
 
-            String result = jedis.set(lockKey, lockValue, params);
+            String result = jedis.set(resourceId, resourceId, params);
             return "OK".equals(result);
         }
     }

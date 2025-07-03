@@ -4,7 +4,10 @@ import com.fileservice.controller.FileServiceController;
 import com.fileservice.health.HealthCheckService;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
+import com.google.inject.Singleton;
 import com.google.inject.name.Named;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
 
@@ -15,6 +18,9 @@ import java.nio.file.Paths;
 
 import static com.fileservice.config.Constants.ENV_VARIABLE_FILE_OPERATION_SERVICE_ROOT_DIR;
 import static com.fileservice.config.Constants.BEAN_NAME_ROOT_DIRECTORY;
+import static com.fileservice.config.Constants.ENV_VARIABLE_REDIS_HOST;
+import static com.fileservice.config.Constants.ENV_VARIABLE_REDIS_PASSWORD;
+import static com.fileservice.config.Constants.ENV_VARIABLE_REDIS_PORT;
 
 /**
  * Guice module configuration for the File Service application.
@@ -55,6 +61,8 @@ import static com.fileservice.config.Constants.BEAN_NAME_ROOT_DIRECTORY;
  * @see com.google.inject.AbstractModule
  */
 public class AppModule extends AbstractModule {
+    private static final Logger LOGGER = LoggerFactory.getLogger(AppModule.class);
+
     @Override
     protected void configure() {
         bind(FileServiceController.class);
@@ -98,6 +106,7 @@ public class AppModule extends AbstractModule {
      */
     @Provides
     @Named(BEAN_NAME_ROOT_DIRECTORY)
+    @Singleton
     public Path provideRootDirectory() {
         String rootDirectory = System.getenv(ENV_VARIABLE_FILE_OPERATION_SERVICE_ROOT_DIR);
 
@@ -109,10 +118,12 @@ public class AppModule extends AbstractModule {
         if (!Files.exists(normalizedRoot) || !Files.isDirectory(normalizedRoot)) {
             throw new InvalidPathException(rootDirectory, "Root directory must exist and be a directory");
         }
+        LOGGER.info("Root directory: {}", normalizedRoot);
         return normalizedRoot;
     }
 
     @Provides
+    @Singleton
     public JedisPool provideJedisPool() {
         JedisPoolConfig poolConfig = new JedisPoolConfig();
         poolConfig.setMaxTotal(100);
@@ -121,11 +132,30 @@ public class AppModule extends AbstractModule {
         poolConfig.setTestOnBorrow(true);
         poolConfig.setTestOnReturn(true);
 
+        String redisHost = System.getenv(ENV_VARIABLE_REDIS_HOST);
+        if (redisHost == null || redisHost.trim().isEmpty()) {
+            throw new IllegalArgumentException("Redis host cannot be null or empty");
+        }
+
+        String redisPortStr = System.getenv(ENV_VARIABLE_REDIS_PORT);
+        if (redisPortStr == null || redisPortStr.trim().isEmpty()) {
+            throw new IllegalArgumentException("Redis port cannot be null or empty");
+        }
+        if (!redisPortStr.matches("\\d+")) {
+            throw new IllegalArgumentException("Redis port must be a number");
+        }
+        int redisPort = Integer.parseInt(redisPortStr);
+
+        String redisPassword = System.getenv(ENV_VARIABLE_REDIS_PASSWORD);
+        if (redisPassword == null || redisPassword.trim().isEmpty()) {
+            throw new IllegalArgumentException("Redis password cannot be null or empty");
+        }
+
         return new JedisPool(poolConfig,
-                "localhost",
-                6379,
+                redisHost,
+                redisPort,
                 2000,// 2 second timeout
-                "hePgM5pwEa"); // TODO get password from config
+                redisPassword);
 
     }
 }

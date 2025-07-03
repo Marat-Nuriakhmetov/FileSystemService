@@ -25,134 +25,113 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @EnabledIfEnvironmentVariable(named = "INTEG_TEST", matches = "ON")
 public class FileSystemApiIntegrationTest {
 
-    private final String fosServerBaseUrl = "http://localhost:8080/fos";
-    //     private final String fosServerBaseUrl = System.getenv("FOS_SERVER_BASE_URL");
+    private final String fosServerBaseUrl = System.getenv("FOS_SERVER_BASE_URL");
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    private final JSONRPC2Session session = createSession();
+
+    public FileSystemApiIntegrationTest() throws MalformedURLException {
+    }
+
     @Test
-    void testAllOperationHappyPath() throws IOException {
+    void testAllOperationHappyPath() throws IOException, JSONRPC2SessionException {
 
         // delete file if previous tests didn't delete it
         callServer("delete", Arrays.asList("test.txt", true));
         callServer("delete", Arrays.asList("test", true));
 
         // Create folder
-        Object result = callServer("create", Arrays.asList("test", "DIRECTORY"));
-        assertInstanceOf(Boolean.class, result);
-        assertTrue((Boolean) result);
+        boolean result = callServerAndVCastnResult("create", Arrays.asList("test", "DIRECTORY"), Boolean.class);
+        assertTrue(result);
 
         // Create file
-        result = callServer("create", Arrays.asList("test/test.txt", "FILE"));
-        assertInstanceOf(Boolean.class, result);
-        assertTrue((Boolean) result);
+        result = callServerAndVCastnResult("create", Arrays.asList("test/test.txt", "FILE"), Boolean.class);
+        assertTrue(result);
 
         // get info
-        Object fileInfoResponse = callServer("getFileInfo", Arrays.asList("test/test.txt"));
-        assertInstanceOf(JSONObject.class, fileInfoResponse);
-        String fileInfoAsString = JSONObject.toJSONString((Map<String, ? extends Object>) fileInfoResponse);
+        JSONObject fileInfoResponse = callServerAndVCastnResult("getFileInfo", Arrays.asList("test/test.txt"), JSONObject.class);
+        String fileInfoAsString = JSONObject.toJSONString(fileInfoResponse);
         FileInfo fileInfo = objectMapper.readValue(fileInfoAsString, FileInfo.class);
         assertEquals("test/test.txt", fileInfo.getPath());
         assertEquals("test.txt", fileInfo.getName());
         assertEquals(0, fileInfo.getSize());
 
         // write to file
-        result = callServer("append", Arrays.asList("test/test.txt", "Hello"));
-        assertInstanceOf(Boolean.class, result);
-        assertTrue((Boolean) result);
+        result = callServerAndVCastnResult("append", Arrays.asList("test/test.txt", "Hello"), Boolean.class);
+        assertTrue(result);
 
         // read the file
-        Object content = callServer("read", Arrays.asList("test/test.txt", 0, 10000));
-        assertInstanceOf(String.class, content);
+        String content = callServerAndVCastnResult("read", Arrays.asList("test/test.txt", 0, 10000), String.class);
         assertEquals("Hello", content);
 
         // append to file
-        result = callServer("append", Arrays.asList("test/test.txt", " world!"));
-        assertInstanceOf(Boolean.class, result);
-        assertTrue((Boolean) result);
+        result = callServerAndVCastnResult("append", Arrays.asList("test/test.txt", " world!"), Boolean.class);
+        assertTrue(result);
 
         // read the entire file
-        content = callServer("read", Arrays.asList("test/test.txt", 0, 10000));
-        assertInstanceOf(String.class, content);
+        content = callServerAndVCastnResult("read", Arrays.asList("test/test.txt", 0, 10000), String.class);
         assertEquals("Hello world!", content);
 
         // read the file partially
-        content = callServer("read", Arrays.asList("test/test.txt", 6, 5));
-        assertInstanceOf(String.class, content);
+        content = callServerAndVCastnResult("read", Arrays.asList("test/test.txt", 6, 5), String.class);
         assertEquals("world", content);
 
         // create nested folder
-        result = callServer("create", Arrays.asList("test/nested", "DIRECTORY"));
-        assertInstanceOf(Boolean.class, result);
-        assertTrue((Boolean) result);
+        result = callServerAndVCastnResult("create", Arrays.asList("test/nested", "DIRECTORY"), Boolean.class);
+        assertTrue(result);
 
         // list the dir
-        Object fileInfosResponse = callServer("listDirectory", List.of("test"));
-        String fileInfosAsString = JSONArray.toJSONString((List<? extends FileInfo>) fileInfosResponse);
-        assertEquals("[{\"path\":\"test\\/test.txt\",\"size\":12,\"name\":\"test.txt\"},{\"path\":\"test\\/nested\",\"size\":64,\"name\":\"nested\"}]", fileInfosAsString);
+        JSONArray fileInfosResponse = callServerAndVCastnResult("listDirectory", List.of("test"), JSONArray.class);
+
+        fileInfoAsString = JSONObject.toJSONString((Map<String, ? extends Object>) fileInfosResponse.get(0));
+        fileInfo = objectMapper.readValue(fileInfoAsString, FileInfo.class);
+        assertEquals("test/test.txt", fileInfo.getPath());
+
+        fileInfoAsString = JSONObject.toJSONString((Map<String, ? extends Object>) fileInfosResponse.get(1));
+        fileInfo = objectMapper.readValue(fileInfoAsString, FileInfo.class);
+        assertEquals("test/nested", fileInfo.getPath());
 
         // delete file
-        result = callServer("delete", Arrays.asList("test/test.txt", true));
-        assertInstanceOf(Boolean.class, result);
-        assertTrue((Boolean) result);
+        result = callServerAndVCastnResult("delete", Arrays.asList("test/test.txt", true), Boolean.class);
+        assertTrue(result);
 
         // delete folder
-        result = callServer("delete", Arrays.asList("test", true));
-        assertInstanceOf(Boolean.class, result);
-        assertTrue((Boolean) result);
+        result = callServerAndVCastnResult("delete", Arrays.asList("test", true), Boolean.class);
+        assertTrue(result);
 
         // list the root dir
-        fileInfosResponse = callServer("listDirectory", List.of("."));
-        fileInfosAsString = JSONArray.toJSONString((List<? extends FileInfo>) fileInfosResponse);
-        assertEquals("[]", fileInfosAsString);
+        JSONArray list = callServerAndVCastnResult("listDirectory", List.of("."), JSONArray.class);
+        assertEquals("[]", JSONArray.toJSONString(list));
 
     }
 
-    // TODO change to map
-    private Object callServer(String method, List<Object> positionalParams) {
+    private <T> T callServerAndVCastnResult(String method, List<Object> positionalParams, Class<T> clazz) throws JSONRPC2SessionException {
+        Object result = callServer(method, positionalParams);
+        assertInstanceOf(clazz, result);
+        return clazz.cast(result);
+    }
+
+    private Object callServer(String method, List<Object> positionalParams) throws JSONRPC2SessionException {
+        int requestID = 0;
+        JSONRPC2Request request = new JSONRPC2Request(method, positionalParams, requestID);
+        // Send request
+        JSONRPC2Response response = session.send(request);;
+        return response.getResult();
+    }
+
+    private JSONRPC2Session createSession() throws MalformedURLException {
         // Creating a new session to a JSON-RPC 2.0 web service at a specified URL
 
         // The JSON-RPC 2.0 server URL
-        URL serverURL = null;
-
-        try {
-            serverURL = new URL(fosServerBaseUrl);
-        } catch (MalformedURLException e) {
-            // handle exception...
-        }
+        URL serverURL = new URL(fosServerBaseUrl);;
 
         // Create new JSON-RPC 2.0 client session
-        JSONRPC2Session mySession = new JSONRPC2Session(serverURL);
-        //https://software.dzhuvinov.com/json-rpc-2.0-client.html
-        // mySession.getOptions().setRequestContentType("application/json+rpc");
 
         // Once the client session object is created, you can use to send a series
         // of JSON-RPC 2.0 requests and notifications to it.
 
-        // Sending an example "getServerTime" request:
-
-        // Construct new request
-        int requestID = 0;
-        JSONRPC2Request request = new JSONRPC2Request(method, positionalParams, requestID);
-
-        // Send request
-        JSONRPC2Response response = null;
-
-        try {
-            response = mySession.send(request);
-        } catch (JSONRPC2SessionException e) {
-            System.err.println(e.getMessage());
-            // TODO handle exception...
-        }
-
-        // Print response result / error
-
-        //if (response.indicatesSuccess())
-        //    System.out.println(response.getResult());
-        //else
-        //    System.out.println(response.getError().getMessage());
-
-        return response.getResult();
+        return new JSONRPC2Session(serverURL);
     }
 
 }
