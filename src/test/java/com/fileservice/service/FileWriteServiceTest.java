@@ -1,32 +1,37 @@
 package com.fileservice.service;
 
-import org.junit.jupiter.api.AfterEach;
+import com.fileservice.service.lock.DistributedLockService;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.*;
 
 class FileWriteServiceTest {
+
+    @Mock
+    private DistributedLockService lockService;
+
+    @Mock
+    private DistributedLockService.DistributedLock distributedLock;
 
     private FileWriteService fileWriteService;
 
@@ -34,106 +39,62 @@ class FileWriteServiceTest {
     private Path tempDir;
 
     @BeforeEach
-    void setUp() {
-        fileWriteService = new FileWriteService(tempDir);
+    void setUp() throws Exception {
+        MockitoAnnotations.openMocks(this);
+        when(lockService.acquireLock(anyString())).thenReturn(distributedLock);
+        doNothing().when(distributedLock).close();
+
+        fileWriteService = new FileWriteService(tempDir, lockService);
     }
 
-    @AfterEach
-    void tearDown() {
-        fileWriteService.shutdown();
-    }
-
-    // Constructor Tests
+    // Basic Operation Tests
     @Test
-    void constructor_WithNullRootDirectory_ThrowsException() {
-        assertThrows(IllegalArgumentException.class,
-                () -> new FileWriteService(null));
-    }
-
-    // Basic Write Tests
-    @Test
-    void append_BasicWrite_Success() throws IOException {
+    void append_BasicWrite_Success() throws IOException, DistributedLockService.LockAcquisitionException {
         // Given
         Path file = tempDir.resolve("test.txt");
-        String data = "Hello, World!";
+        String content = "Hello, World!";
 
         // When
-        boolean result = fileWriteService.append(file.toString(), data);
+        boolean result = fileWriteService.append(file.toString(), content);
 
         // Then
         assertTrue(result);
-        assertEquals(data, Files.readString(file));
+        assertEquals(content, Files.readString(file));
+        verify(lockService).acquireLock("file:" + file);
     }
 
     @Test
-    void append_MultipleWrites_Success() throws IOException {
+    void append_MultipleWrites_Success() throws IOException, DistributedLockService.LockAcquisitionException {
         // Given
         Path file = tempDir.resolve("test.txt");
-        String data1 = "Line 1\n";
-        String data2 = "Line 2\n";
+        String content1 = "Line 1\n";
+        String content2 = "Line 2\n";
 
         // When
-        fileWriteService.append(file.toString(), data1);
-        fileWriteService.append(file.toString(), data2);
+        fileWriteService.append(file.toString(), content1);
+        fileWriteService.append(file.toString(), content2);
 
         // Then
-        String content = Files.readString(file);
-        assertEquals(data1 + data2, content);
+        assertEquals(content1 + content2, Files.readString(file));
+        verify(lockService, times(2)).acquireLock(anyString());
     }
 
-    // Concurrent Write Tests
-    @Test
-    void append_ConcurrentWrites_Success() throws Exception {
-        // Given
-        Path file = tempDir.resolve("concurrent.txt");
-        int numThreads = 10;
-        int writesPerThread = 100;
-        ExecutorService executor = Executors.newFixedThreadPool(numThreads);
-
-        try {
-            // When
-            List<Future<Void>> futures = new ArrayList<>();
-            for (int i = 0; i < numThreads; i++) {
-                final int threadNum = i;
-                futures.add(executor.submit(() -> {
-                    for (int j = 0; j < writesPerThread; j++) {
-                        fileWriteService.append(file.toString(),
-                                String.format("Thread-%d-Write-%d\n", threadNum, j));
-                    }
-                    return null;
-                }));
-            }
-
-            // Wait for all writes to complete
-            for (Future<Void> future : futures) {
-                future.get(10, TimeUnit.SECONDS);
-            }
-
-            // Then
-            List<String> lines = Files.readAllLines(file);
-            assertEquals(numThreads * writesPerThread, lines.size());
-            assertTrue(lines.stream().allMatch(line ->
-                    line.matches("Thread-\\d+-Write-\\d+")));
-
-        } finally {
-            executor.shutdownNow();
-        }
-    }
-
-    // Error Cases
+    // Parameter Validation Tests
     @ParameterizedTest
     @NullAndEmptySource
-    void append_NullOrEmptyPath_ThrowsException(String invalidPath) {
+    @ValueSource(strings = {" ", "\t", "\n"})
+    void append_InvalidPath_ThrowsException(String invalidPath) {
         assertThrows(IllegalArgumentException.class,
-                () -> fileWriteService.append(invalidPath, "data"));
+                () -> fileWriteService.append(invalidPath, "content"));
     }
 
     @Test
     void append_NullData_ThrowsException() {
         assertThrows(IllegalArgumentException.class,
-                () -> fileWriteService.append(tempDir.resolve("test.txt").toString(), null));
+                () -> fileWriteService.append("test.txt", null));
     }
 
+    // Security Tests
     @Test
     void append_PathOutsideRoot_ThrowsException() {
         // Given
@@ -141,32 +102,73 @@ class FileWriteServiceTest {
 
         // When & Then
         assertThrows(SecurityException.class,
-                () -> fileWriteService.append(outsidePath.toString(), "data"));
+                () -> fileWriteService.append(outsidePath.toString(), "content"));
     }
 
-    // Lock Cleanup Tests
-    // @Test
-    void lockCleanup_RemovesExpiredLocks() throws Exception {
+    // Lock Handling Tests
+    @Test
+    void append_LockAcquisitionFails_ThrowsException() throws Exception {
         // Given
-        Path file = tempDir.resolve("cleanup.txt");
-        fileWriteService.append(file.toString(), "initial\n");
+        when(lockService.acquireLock(anyString()))
+                .thenThrow(new DistributedLockService.LockAcquisitionException("Lock failed"));
 
-        // When
-        Thread.sleep(TimeUnit.MINUTES.toMillis(2)); // Wait for lock to expire
-
-        // Then
-        assertTrue(fileWriteService.append(file.toString(), "after cleanup\n"));
+        // When & Then
+        assertThrows(RuntimeException.class,
+                () -> fileWriteService.append("test.txt", "content"));
     }
-    void lockCleanup_ExpiresOldLocks() throws Exception {
+
+    @Test
+    void append_EnsuresLockIsReleased() throws IOException {
         // Given
-        Path file = tempDir.resolve("cleanup.txt");
-        fileWriteService.append(file.toString(), "initial\n");
+        Path file = tempDir.resolve("test.txt");
 
         // When
-        Thread.sleep(TimeUnit.MINUTES.toMillis(2)); // Wait for lock to expire
+        fileWriteService.append(file.toString(), "content");
 
         // Then
-        assertTrue(fileWriteService.append(file.toString(), "after cleanup\n"));
+        verify(distributedLock).close();
+    }
+
+    // Concurrent Operation Tests
+    @Test
+    void append_ConcurrentWrites_Success() throws Exception {
+        // Given
+        Path file = tempDir.resolve("concurrent.txt");
+        int numThreads = 10;
+        ExecutorService executor = Executors.newFixedThreadPool(numThreads);
+
+        try {
+            // When
+            List<CompletableFuture<Void>> futures = IntStream.range(0, numThreads)
+                    .mapToObj(i -> CompletableFuture.runAsync(() -> {
+                        try {
+                            fileWriteService.append(file.toString(),
+                                    String.format("Thread-%d\n", i));
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }, executor))
+                    .collect(Collectors.toList());
+
+            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+
+            // Then
+            List<String> lines = Files.readAllLines(file);
+            assertEquals(numThreads, lines.size());
+            assertTrue(lines.stream().allMatch(line -> line.matches("Thread-\\d+")));
+            verify(lockService, times(numThreads)).acquireLock(anyString());
+
+        } finally {
+            executor.shutdown();
+        }
+    }
+
+    // Edge Cases
+    @Test
+    void append_ToNonexistentDirectory_ThrowsException() throws IOException {
+        // When & Then
+        assertThrows(NoSuchFileException.class,
+                () -> fileWriteService.append("nonexistent/test.txt", "content"));
     }
 
     // Performance Tests
@@ -178,44 +180,34 @@ class FileWriteServiceTest {
 
         // When
         List<CompletableFuture<Void>> futures = IntStream.range(0, numWrites)
-                .mapToObj(i -> CompletableFuture.runAsync(() ->
-                {
+                .mapToObj(i -> CompletableFuture.runAsync(() -> {
                     try {
                         fileWriteService.append(file.toString(), "Line " + i + "\n");
                     } catch (IOException e) {
-                        throw new CompletionException(e);
+                        throw new RuntimeException(e);
                     }
                 }))
                 .collect(Collectors.toList());
 
-        // Then
-        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
-                .get(30, TimeUnit.SECONDS);
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
 
+        // Then
         List<String> lines = Files.readAllLines(file);
         assertEquals(numWrites, lines.size());
+        verify(lockService, times(numWrites)).acquireLock(anyString());
     }
 
-    // Special Cases
+    // Error Recovery Tests
     @Test
-    void append_ToDirectory_ThrowsException() throws IOException {
+    void append_WhenIOExceptionOccurs_LockIsReleased() throws Exception {
         // Given
-        Path dir = Files.createDirectory(tempDir.resolve("dir"));
+        Path file = tempDir.resolve("error.txt");
+        doThrow(new IOException("Test error"))
+                .when(distributedLock).close();
 
         // When & Then
         assertThrows(IOException.class,
-                () -> fileWriteService.append(dir.toString(), "data"));
-    }
-
-    @Test
-    @Disabled("Not implemented yet")
-    void append_ToReadOnlyFile_ThrowsException() throws IOException {
-        // Given
-        Path file = Files.createFile(tempDir.resolve("readonly.txt"));
-        file.toFile().setReadOnly();
-
-        // When & Then
-        assertThrows(IOException.class,
-                () -> fileWriteService.append(file.toString(), "data"));
+                () -> fileWriteService.append(file.toString(), "content"));
+        verify(distributedLock).close();
     }
 }

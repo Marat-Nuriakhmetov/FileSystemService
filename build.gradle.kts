@@ -46,6 +46,7 @@ dependencies {
     implementation("javax.annotation:javax.annotation-api:1.3.2")
     compileOnly("org.projectlombok:lombok:1.18.38")
     implementation("com.thetransactioncompany:jsonrpc2-client:2.1.1")
+    implementation("redis.clients:jedis:6.0.0")
     annotationProcessor("org.projectlombok:lombok:1.18.38")
 
     implementation("org.apache.logging.log4j:log4j-core:2.25.0")

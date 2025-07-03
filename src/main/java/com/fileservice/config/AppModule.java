@@ -5,6 +5,8 @@ import com.fileservice.health.HealthCheckService;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.name.Named;
+import redis.clients.jedis.JedisPool;
+import redis.clients.jedis.JedisPoolConfig;
 
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
@@ -108,5 +110,22 @@ public class AppModule extends AbstractModule {
             throw new InvalidPathException(rootDirectory, "Root directory must exist and be a directory");
         }
         return normalizedRoot;
+    }
+
+    @Provides
+    public JedisPool provideJedisPool() {
+        JedisPoolConfig poolConfig = new JedisPoolConfig();
+        poolConfig.setMaxTotal(100);
+        poolConfig.setMaxIdle(20);
+        poolConfig.setMinIdle(10);
+        poolConfig.setTestOnBorrow(true);
+        poolConfig.setTestOnReturn(true);
+
+        return new JedisPool(poolConfig,
+                "localhost",
+                6379,
+                2000,// 2 second timeout
+                "hePgM5pwEa"); // TODO get password from config
+
     }
 }
