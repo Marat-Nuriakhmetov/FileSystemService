@@ -38,13 +38,7 @@ public class FileInfoGenerator {
         return new FileInfo(
                 name,                           // name
                 path,                          // path
-                generateRandomSize(),          // size
-                random.nextBoolean(),          // isDirectory
-                random.nextBoolean(),          // isRegularFile
-                random.nextBoolean(),          // isSymbolicLink
-                generateRandomTimestamp(),      // lastModifiedTime
-                generateRandomTimestamp(),      // creationTime
-                generateRandomTimestamp()       // lastAccessTime
+                generateRandomSize()          // size
         );
     }
 
@@ -101,12 +95,6 @@ public class FileInfoGenerator {
             this.name = random.getName();
             this.path = random.getPath();
             this.size = random.getSize();
-            this.isDirectory = random.isDirectory();
-            this.isRegularFile = random.isRegularFile();
-            this.isSymbolicLink = random.isSymbolicLink();
-            this.lastModifiedTime = random.getLastModifiedTime();
-            this.creationTime = random.getCreationTime();
-            this.lastAccessTime = random.getLastAccessTime();
         }
 
         public Builder withName(String name) {
@@ -158,13 +146,7 @@ public class FileInfoGenerator {
             return new FileInfo(
                     name,
                     path,
-                    size,
-                    isDirectory,
-                    isRegularFile,
-                    isSymbolicLink,
-                    lastModifiedTime,
-                    creationTime,
-                    lastAccessTime
+                    size
             );
         }
     }

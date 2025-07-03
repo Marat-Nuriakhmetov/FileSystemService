@@ -55,12 +55,6 @@ public class FileGetInfoService extends BaseFileService {
                     .name(file.getFileName().toString())
                     .path(PathUtils.getRelativePath(rootDirectory, file))
                     .size(attrs.size())
-                    .isDirectory(attrs.isDirectory())
-                    .isRegularFile(attrs.isRegularFile())
-                    .isSymbolicLink(attrs.isSymbolicLink())
-                    .creationTime(attrs.creationTime().toMillis())
-                    .lastModifiedTime(attrs.lastModifiedTime().toMillis())
-                    .lastAccessTime(attrs.lastAccessTime().toMillis())
                     .build();
 
             LOGGER.trace("Retrieved file info for: {}", path);

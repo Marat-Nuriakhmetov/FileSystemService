@@ -3,6 +3,7 @@ package com.fileservice.dto;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * Data Transfer Object (DTO) representing file system entry information.
@@ -25,6 +26,7 @@ import lombok.Data;
 @Data
 @AllArgsConstructor
 @Builder
+@NoArgsConstructor(force = true) // TODO improve
 public class FileInfo {
 
     /**
@@ -45,39 +47,4 @@ public class FileInfo {
      */
     private final long size;
 
-    /**
-     * Indicates whether this entry is a directory.
-     * True if the entry is a directory, false otherwise.
-     */
-    private final boolean isDirectory;
-
-    /**
-     * Indicates whether this entry is a regular file.
-     * True if the entry is a regular file, false for directories or special files.
-     */
-    private final boolean isRegularFile;
-
-    /**
-     * Indicates whether this entry is a symbolic link.
-     * True if the entry is a symbolic link, false otherwise.
-     */
-    private final boolean isSymbolicLink;
-
-    /**
-     * The last modification time in milliseconds since the epoch.
-     * Represents when the file's content or metadata was last changed.
-     */
-    private final long lastModifiedTime;
-
-    /**
-     * The creation time in milliseconds since the epoch.
-     * Represents when the file was created in the file system.
-     */
-    private final long creationTime;
-
-    /**
-     * The last access time in milliseconds since the epoch.
-     * Represents when the file was last read or executed.
-     */
-    private final long lastAccessTime;
 }

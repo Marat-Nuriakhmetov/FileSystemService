@@ -48,12 +48,6 @@ class FileGetInfoServiceTest {
             assertEquals("test.txt", info.getName());
             assertEquals("test.txt", info.getPath());
             assertEquals(content.length(), info.getSize());
-            assertFalse(info.isDirectory());
-            assertTrue(info.isRegularFile());
-            assertFalse(info.isSymbolicLink());
-            assertEquals(attrs.creationTime().toMillis(), info.getCreationTime());
-            assertEquals(attrs.lastModifiedTime().toMillis(), info.getLastModifiedTime());
-            assertEquals(attrs.lastAccessTime().toMillis(), info.getLastAccessTime());
         }
 
         @Test
@@ -68,10 +62,6 @@ class FileGetInfoServiceTest {
             // Then
             assertEquals("testDir", info.getName());
             assertEquals("testDir", info.getPath());
-            assertTrue(info.isDirectory());
-            assertFalse(info.isRegularFile());
-            assertFalse(info.isSymbolicLink());
-            assertEquals(attrs.creationTime().toMillis(), info.getCreationTime());
         }
     }
 
@@ -123,38 +113,6 @@ class FileGetInfoServiceTest {
             // When & Then
             assertThrows(SecurityException.class,
                     () -> fileGetInfoService.getFileInfo(outsidePath.toString()));
-        }
-    }
-
-    @Nested
-    class TimeAttributeTests {
-        @Test
-        void getFileInfo_ModifiedFile_ReturnsUpdatedTimes() throws IOException, InterruptedException {
-            // Given
-            Path file = createFile("test.txt", "initial content");
-            Thread.sleep(100); // Ensure time difference
-            Files.write(file, "updated content".getBytes());
-            BasicFileAttributes attrs = Files.readAttributes(file, BasicFileAttributes.class);
-
-            // When
-            FileInfo info = fileGetInfoService.getFileInfo(file.toString());
-
-            // Then
-            assertEquals(attrs.lastModifiedTime().toMillis(), info.getLastModifiedTime());
-        }
-
-        @Test
-        void getFileInfo_CustomTimes_ReturnsCorrectTimes() throws IOException {
-            // Given
-            Path file = createFile("test.txt", "content");
-            FileTime customTime = FileTime.from(Instant.parse("2023-01-01T00:00:00Z"));
-            Files.setAttribute(file, "basic:lastModifiedTime", customTime);
-
-            // When
-            FileInfo info = fileGetInfoService.getFileInfo(file.toString());
-
-            // Then
-            assertEquals(customTime.toMillis(), info.getLastModifiedTime());
         }
     }
 

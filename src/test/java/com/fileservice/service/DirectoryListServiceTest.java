@@ -188,13 +188,7 @@ class DirectoryListServiceTest {
         return new FileInfo(
                 name,
                 tempDir.resolve(name).toString(),
-                0L,
-                false,
-                true,
-                false,
-                System.currentTimeMillis(),
-                System.currentTimeMillis(),
-                System.currentTimeMillis()
+                0L
         );
     }
 }
