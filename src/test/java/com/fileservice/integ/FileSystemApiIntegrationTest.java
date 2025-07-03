@@ -100,6 +100,12 @@ public class FileSystemApiIntegrationTest {
         result = callServer("delete", Arrays.asList("test", true));
         assertInstanceOf(Boolean.class, result);
         assertTrue((Boolean) result);
+
+        // list the root dir
+        fileInfosResponse = callServer("listDirectory", List.of("."));
+        fileInfosAsString = JSONArray.toJSONString((List<? extends FileInfo>) fileInfosResponse);
+        assertEquals("[]", fileInfosAsString);
+
     }
 
     // TODO change to map
