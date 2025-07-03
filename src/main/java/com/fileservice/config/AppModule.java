@@ -1,7 +1,7 @@
 package com.fileservice.config;
 
 import com.fileservice.controller.FileServiceController;
-import com.fileservice.service.FileCreateService;
+import com.fileservice.health.HealthCheckService;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.name.Named;
@@ -55,7 +55,8 @@ import static com.fileservice.config.Constants.BEAN_NAME_ROOT_DIRECTORY;
 public class AppModule extends AbstractModule {
     @Override
     protected void configure() {
-       bind(FileServiceController.class);
+        bind(FileServiceController.class);
+        bind(HealthCheckService.class);
     }
 
     /**

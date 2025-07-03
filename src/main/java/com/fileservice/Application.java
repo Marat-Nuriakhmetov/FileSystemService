@@ -2,7 +2,9 @@ package com.fileservice;
 
 import com.fileservice.config.AppModule;
 import com.fileservice.controller.FileServiceController;
+import com.fileservice.controller.HealthCheckServlet;
 import com.fileservice.controller.JsonRpcServlet;
+import com.fileservice.health.HealthCheckService;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import org.eclipse.jetty.server.Server;
@@ -35,7 +37,7 @@ import org.slf4j.LoggerFactory;
  *
  * <p>Environment variables required:
  * <ul>
- *     <li>root.dir: Root directory for file operations</li>
+ *     <li>FILE_OPERATION_SERVICE_ROOT_DIR: Root directory for file operations</li>
  * </ul>
  *
  * @see AppModule
@@ -47,6 +49,7 @@ public class Application {
     private static final int DEFAULT_PORT = 8080;
     private static final String CONTEXT_PATH = "/";
     private static final String RPC_ENDPOINT = "/fos";
+    private static final String HEALTH_CHECK_ENDPOINT = "/health";
 
     /**
      * Application entry point.
@@ -68,8 +71,12 @@ public class Application {
             FileServiceController fileServiceController =
                     injector.getInstance(FileServiceController.class);
 
+            // Get health check service instance
+            HealthCheckService healthCheckService =
+                    injector.getInstance(HealthCheckService.class);
+
             // Start server
-            Server server = createAndConfigureServer(fileServiceController);
+            Server server = createAndConfigureServer(fileServiceController, healthCheckService);
             startServer(server);
 
         } catch (Exception e) {
@@ -82,9 +89,10 @@ public class Application {
      * Creates and configures the Jetty server with all required handlers and servlets.
      *
      * @param fileServiceController the controller instance for handling file operations
+     * @param healthCheckService the health check service
      * @return configured Server instance
      */
-    private static Server createAndConfigureServer(FileServiceController fileServiceController) {
+    private static Server createAndConfigureServer(FileServiceController fileServiceController, HealthCheckService healthCheckService) {
         LOGGER.trace("Configuring Jetty server...");
 
         // Create server instance
@@ -102,6 +110,10 @@ public class Application {
         // Add JSON-RPC servlet
         JsonRpcServlet rpcServlet = new JsonRpcServlet(fileServiceController);
         context.addServlet(new ServletHolder(rpcServlet), RPC_ENDPOINT);
+
+        // Add health check servlet
+        HealthCheckServlet healthCheckServlet = new HealthCheckServlet(healthCheckService);
+        context.addServlet(new ServletHolder(healthCheckServlet), HEALTH_CHECK_ENDPOINT);
 
         LOGGER.info("Server configured on port " + DEFAULT_PORT);
         return server;
