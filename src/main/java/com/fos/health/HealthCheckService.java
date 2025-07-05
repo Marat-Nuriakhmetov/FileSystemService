@@ -11,7 +11,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com.fos.config.Constants.BEAN_NAME_ROOT_DIRECTORY;
+import static com.fos.config.Constants.BEAN_NAME_ROOT_DIR;
 
 /**
  * Service for performing various health checks.
@@ -22,7 +22,7 @@ public class HealthCheckService {
     private final List<HealthIndicator> healthIndicators;
 
     @Inject
-    public HealthCheckService(@Named(BEAN_NAME_ROOT_DIRECTORY) Path rootDirectory) {
+    public HealthCheckService(@Named(BEAN_NAME_ROOT_DIR) Path rootDirectory) {
         this.rootDirectory = rootDirectory;
         this.healthIndicators = new ArrayList<>();
         initializeHealthIndicators();

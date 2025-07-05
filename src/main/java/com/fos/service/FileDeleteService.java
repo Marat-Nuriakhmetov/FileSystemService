@@ -12,7 +12,7 @@ import java.nio.file.*;
 import java.util.Comparator;
 import java.util.stream.Stream;
 
-import static com.fos.config.Constants.BEAN_NAME_ROOT_DIRECTORY;
+import static com.fos.config.Constants.BEAN_NAME_ROOT_DIR;
 
 /**
  * Service for deleting files and directories from the file system.
@@ -22,7 +22,7 @@ public class FileDeleteService  extends BaseFileService {
     private static final Logger LOGGER = LoggerFactory.getLogger(FileDeleteService.class);
 
     @Inject
-    public FileDeleteService(@Named(BEAN_NAME_ROOT_DIRECTORY) Path rootDirectory) {
+    public FileDeleteService(@Named(BEAN_NAME_ROOT_DIR) Path rootDirectory) {
         super(rootDirectory);
     }
 

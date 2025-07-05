@@ -35,10 +35,23 @@ import org.slf4j.LoggerFactory;
  *     <li>RPC endpoint: /fos</li>
  * </ul>
  *
- * <p>Environment variables required:
- * <ul>
- *     <li>FILE_OPERATION_SERVICE_ROOT_DIR: Root directory for file operations</li>
- * </ul>
+ * <p>Configuration Methods (the values as examples):
+ * <pre>
+ * 1. Command Line Arguments:
+ *    java -jar app.jar /path/to/root redis-host 6379 password
+ *
+ * 2. Environment Variables:
+ *    export FOS_ROOT_DIR=/path/to/root
+ *    export REDIS_HOST=localhost
+ *    export REDIS_PORT=6379
+ *    export REDIS_PASSWORD=secret
+ *
+ * 3. JVM Arguments:
+ *    -Dfos.root.dir=/path/to/root
+ *    -Dfos.redis.host=localhost
+ *    -Dfos.redis.port=6379
+ *    -Dfos.redis.password=secret
+ * </pre>
  *
  * @see AppModule
  * @see FileServiceApiService
@@ -64,7 +77,7 @@ public class Application {
         try {
             // Initialize dependency injection
             LOGGER.trace("Initializing Guice injector...");
-            Injector injector = Guice.createInjector(new AppModule());
+            Injector injector = Guice.createInjector(new AppModule(args));
 
             // Get controller instance
             LOGGER.trace("Creating FileServiceController...");
@@ -85,7 +98,7 @@ public class Application {
         }
     }
 
-    private static Server createAndConfigureServer(FileServiceApiService fileServiceApiService, HealthCheckService healthCheckService) {
+    static Server createAndConfigureServer(FileServiceApiService fileServiceApiService, HealthCheckService healthCheckService) {
         LOGGER.trace("Configuring Jetty server...");
 
         // Create server instance
@@ -146,10 +159,11 @@ public class Application {
 
     /**
      * Stops the server gracefully.
+     * TODO call it from shutdown hooks
      *
      * @param server the Server instance to stop
      */
-    private static void stopServer(Server server) {
+    static void stopServer(Server server) {
         try {
             if (server != null && server.isRunning()) {
                 LOGGER.info("Stopping server...");

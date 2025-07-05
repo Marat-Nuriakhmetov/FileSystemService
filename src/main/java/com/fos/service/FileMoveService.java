@@ -9,7 +9,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.file.*;
 
-import static com.fos.config.Constants.BEAN_NAME_ROOT_DIRECTORY;
+import static com.fos.config.Constants.BEAN_NAME_ROOT_DIR;
 
 /**
  * Service for moving files and directories within the file system.
@@ -20,7 +20,7 @@ public class FileMoveService  extends BaseFileService {
     private static final Logger LOGGER = LoggerFactory.getLogger(FileMoveService.class);
 
     @Inject
-    public FileMoveService(@Named(BEAN_NAME_ROOT_DIRECTORY) Path rootDirectory) {
+    public FileMoveService(@Named(BEAN_NAME_ROOT_DIR) Path rootDirectory) {
         super(rootDirectory);
     }
 

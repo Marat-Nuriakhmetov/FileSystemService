@@ -12,7 +12,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 
-import static com.fos.config.Constants.BEAN_NAME_ROOT_DIRECTORY;
+import static com.fos.config.Constants.BEAN_NAME_ROOT_DIR;
 
 /**
  * Service for concurrent file writing operations.
@@ -25,7 +25,7 @@ public class FileWriteService extends BaseFileService {
     private final DistributedLockService lockService;
 
     @Inject
-    public FileWriteService(@Named(BEAN_NAME_ROOT_DIRECTORY) Path rootDirectory, DistributedLockService lockService) {
+    public FileWriteService(@Named(BEAN_NAME_ROOT_DIR) Path rootDirectory, DistributedLockService lockService) {
         super(rootDirectory);
         this.lockService = lockService;
     }

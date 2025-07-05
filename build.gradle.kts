@@ -59,8 +59,17 @@ dependencies {
     testImplementation("org.mockito:mockito-core:4.5.1")
     testImplementation("org.mockito:mockito-junit-jupiter:4.5.1")
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.2")
+    testImplementation("org.junit-pioneer:junit-pioneer:2.3.0")
 }
 
 tasks.test {
     useJUnitPlatform()
+}
+
+tasks.withType<Test> {
+    useJUnitPlatform()
+    // these two line are needed to run tests on java 17 and later
+    // see for mode details https://junit-pioneer.org/docs/environment-variables/#warnings-for-reflective-access
+    jvmArgs("--add-opens", "java.base/java.util=ALL-UNNAMED")
+    jvmArgs("--add-opens", "java.base/java.lang=ALL-UNNAMED")
 }
