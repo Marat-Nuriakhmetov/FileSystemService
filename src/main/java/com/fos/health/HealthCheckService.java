@@ -34,7 +34,7 @@ public class HealthCheckService {
         // Add more indicators as needed
     }
 
-    public HealthStatus checkHealth() {
+    public HealthStatus checkHealth(String requestId) {
         boolean isHealthy = true;
         Map<String, Object> details = new HashMap<>();
 
@@ -49,6 +49,8 @@ public class HealthCheckService {
             }
         }
 
-        return new HealthStatus(isHealthy ? HealthStatus.Status.UP : HealthStatus.Status.DOWN, details);
+        HealthStatus.Status status = isHealthy ? HealthStatus.Status.UP : HealthStatus.Status.DOWN;
+
+        return new HealthStatus(status, details, requestId);
     }
 }

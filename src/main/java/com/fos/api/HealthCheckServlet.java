@@ -13,55 +13,80 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 
 /**
- * Servlet that handles health check requests for the application.
- * Provides a REST endpoint that returns the current health status of the system
- * in JSON format. The health check includes various system components and
- * returns appropriate HTTP status codes based on the overall health status.
+ * Health Check Endpoint for File Operation Service (FOS).
  *
- * <p>Endpoint: GET /health
- * <p>Response format:
+ * <p>Provides a RESTful endpoint for monitoring system health, including file system
+ * accessibility, resource availability, and overall service status. This servlet
+ * is crucial for infrastructure monitoring and automated health checks in containerized
+ * environments.</p>
+ *
+ * <h2>API Specification:</h2>
  * <pre>
+ * GET /health
+ *
+ * Response Format:
  * {
  *   "status": "UP|DOWN",
  *   "timestamp": "2023-01-01T12:00:00.000Z",
  *   "details": {
- *     "component1": { ... },
- *     "component2": { ... }
+ *     "fileSystem": {
+ *       "status": "UP",
+ *       "message": "Root directory accessible",
+ *       "path": "/data"
+ *     },
+ *     "memory": {
+ *       "status": "UP",
+ *       "free": "512MB",
+ *       "total": "1024MB"
+ *     }
  *   }
  * }
  * </pre>
  *
- * <p>HTTP Status Codes:
+ * <h2>HTTP Status Codes:</h2>
  * <ul>
- *   <li>200 OK - System is healthy</li>
- *   <li>503 Service Unavailable - System is unhealthy</li>
- *   <li>500 Internal Server Error - Health check failed</li>
+ *   <li>{@code 200 OK} - System is healthy and operational</li>
+ *   <li>{@code 503 Service Unavailable} - System is degraded or non-operational</li>
+ *   <li>{@code 500 Internal Server Error} - Health check execution failed</li>
  * </ul>
  *
- * @see HealthCheckService
- * @see HealthStatus
+ * <h2>Usage Examples:</h2>
+ * <pre>
+ * // Kubernetes liveness probe
+ * livenessProbe:
+ *   httpGet:
+ *     path: /health
+ *     port: 8080
+ *   initialDelaySeconds: 10
+ *   periodSeconds: 30
+ *
+ * // cURL request
+ * curl -i http://localhost:8080/health
+ * </pre>
+ *
+ * <h2>Implementation Notes:</h2>
+ * <ul>
+ *   <li>Thread-safe implementation suitable for concurrent access</li>
+ *   <li>Non-caching responses for real-time health status</li>
+ *   <li>Lightweight execution to minimize system impact</li>
+ *   <li>Detailed logging for troubleshooting</li>
+ * </ul>
+ *
+ * @see HealthCheckService For the underlying health check implementation
+ * @see HealthStatus For the health status data structure
+ * @version 1.0
+ * @since 1.0
  */
 public class HealthCheckServlet extends HttpServlet {
 
-    /**
-     * Logger instance for this class.
-     */
     private static final Logger LOGGER = LoggerFactory.getLogger(HealthCheckServlet.class);
-
-    /**
-     * Service responsible for performing health checks.
-     */
     private final HealthCheckService healthCheckService;
-
-    /**
-     * JSON Object mapper for serializing health status.
-     */
     private final ObjectMapper objectMapper;
 
     /**
-     * Constructs a new HealthCheckServlet with the specified health check service.
+     * Constructs a new HealthCheckServlet with dependency injection.
      *
-     * @param healthCheckService the service to use for health checks
+     * @param healthCheckService Service responsible for performing health checks
      * @throws NullPointerException if healthCheckService is null
      */
     @Inject
@@ -74,50 +99,56 @@ public class HealthCheckServlet extends HttpServlet {
     }
 
     /**
-     * Handles GET requests to the health check endpoint.
-     * Performs a health check and returns the results as JSON.
+     * Processes GET requests to the health check endpoint.
      *
-     * <p>The response includes:
+     * <p>Execution Flow:</p>
+     * <ol>
+     *   <li>Logs incoming request</li>
+     *   <li>Performs system health check</li>
+     *   <li>Sets appropriate response headers</li>
+     *   <li>Returns health status in JSON format</li>
+     * </ol>
+     *
+     * <p>Error Handling:</p>
      * <ul>
-     *   <li>Current system status (UP/DOWN)</li>
-     *   <li>Timestamp of the check</li>
-     *   <li>Detailed status of individual components</li>
+     *   <li>Catches and logs all exceptions</li>
+     *   <li>Returns appropriate error response</li>
+     *   <li>Maintains audit trail for troubleshooting</li>
      * </ul>
      *
-     * @param request the HTTP servlet request
-     * @param response the HTTP servlet response
-     * @throws IOException if an I/O error occurs while writing the response
+     * @param request HTTP request object
+     * @param response HTTP response object
+     * @throws IOException if response writing fails
      */
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws IOException {
-        LOGGER.debug("Processing health check request");
+        String requestId = generateRequestId();
+        LOGGER.debug("Processing health check request [{}]", requestId);
 
         try {
-            // Perform health check
-            HealthStatus status = healthCheckService.checkHealth();
-            LOGGER.debug("Health check completed with status: {}", status.getStatus());
+            HealthStatus status = healthCheckService.checkHealth(requestId);
+            LOGGER.debug("Health check completed [{}] with status: {}",
+                    requestId, status.getStatus());
 
-            // Configure response
             configureResponse(response);
-
-            // Set HTTP status code based on health status
             response.setStatus(determineHttpStatus(status));
 
-            // Write response
             String jsonResponse = objectMapper.writeValueAsString(status);
             response.getWriter().write(jsonResponse);
 
         } catch (Exception e) {
-            LOGGER.error("Health check failed", e);
-            handleError(response);
+            LOGGER.error("Health check failed [{}]", requestId, e);
+            configureResponse(response);
+            handleError(response, requestId);
         }
     }
 
     /**
-     * Configures the HTTP response headers.
+     * Configures HTTP response headers for health check response.
+     * Sets content type, character encoding, and cache control directives.
      *
-     * @param response the HTTP servlet response to configure
+     * @param response HTTP response to configure
      */
     private void configureResponse(HttpServletResponse response) {
         response.setContentType("application/json");
@@ -128,10 +159,10 @@ public class HealthCheckServlet extends HttpServlet {
     }
 
     /**
-     * Determines the appropriate HTTP status code based on the health status.
+     * Maps health status to appropriate HTTP status code.
      *
-     * @param status the health status
-     * @return the HTTP status code to use
+     * @param status Current health status
+     * @return HTTP status code (200 for UP, 503 for DOWN)
      */
     private int determineHttpStatus(HealthStatus status) {
         return status.getStatus() == HealthStatus.Status.UP ?
@@ -140,13 +171,28 @@ public class HealthCheckServlet extends HttpServlet {
     }
 
     /**
-     * Handles errors that occur during health check processing.
+     * Handles and formats error responses for failed health checks.
      *
-     * @param response the HTTP servlet response
-     * @throws IOException if an I/O error occurs while writing the error response
+     * @param response HTTP response for error
+     * @param requestId Unique identifier for the request
+     * @throws IOException if writing error response fails
      */
-    private void handleError(HttpServletResponse response) throws IOException {
+    private void handleError(HttpServletResponse response, String requestId)
+            throws IOException {
         response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-        response.getWriter().write("{\"status\":\"ERROR\",\"message\":\"Health check failed\"}");
+        String errorJson = String.format(
+                "{\"status\":\"ERROR\",\"message\":\"Health check failed\",\"requestId\":\"%s\"}",
+                requestId
+        );
+        response.getWriter().write(errorJson);
+    }
+
+    /**
+     * Generates a unique identifier for request tracking.
+     *
+     * @return Unique request identifier
+     */
+    private String generateRequestId() {
+        return String.format("HC-%d", System.currentTimeMillis());
     }
 }

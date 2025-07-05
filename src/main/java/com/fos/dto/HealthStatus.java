@@ -39,6 +39,7 @@ public class HealthStatus {
 
     private final Status status;
     private final Map<String, Object> details;
+    private final String requestId;
 
     /**
      *  Returns the timestamp when this status was created.
@@ -52,9 +53,10 @@ public class HealthStatus {
      *
      * @param status the overall health status
      */
-    public HealthStatus(Status status, Map<String, Object> details) {
+    public HealthStatus(Status status, Map<String, Object> details, String requestId) {
         this.status = status;
         this.details = details;
+        this.requestId = requestId;
         this.timestamp = Instant.now();
     }
 }
