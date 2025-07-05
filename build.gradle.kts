@@ -2,10 +2,12 @@ plugins {
     id("java")
     id("application")
     id("com.gradleup.shadow") version "8.3.0"
+    id("jacoco")
 }
 
 group = "com.fileservice"
 version = "1.0.0"
+var mainClassName = "com.fos.Application"
 
 sourceSets.main {
     resources.srcDirs("src/resources")
@@ -14,20 +16,39 @@ sourceSets.main {
 tasks {
     jar {
         manifest {
-            attributes["Main-Class"] = "com.fileservice.Application"
+            attributes["Main-Class"] = mainClassName
         }
     }
     shadowJar {
         archiveClassifier = "shadow"
         archiveFileName = "fileservice.jar"
-        manifest {
-            attributes["Main-Class"] = "com.fileservice.Application"
+    }
+}
+
+tasks.register<JacocoReport>("applicationCodeCoverageReport") {
+    executionData(tasks.run.get())
+    sourceSets(sourceSets.main.get())
+}
+
+tasks.jacocoTestCoverageVerification {
+    violationRules {
+        rule {
+            limit {
+                minimum = "0.90".toBigDecimal()
+            }
         }
     }
 }
 
+tasks.test {
+    finalizedBy(tasks.jacocoTestReport) // report is always generated after tests run
+}
+tasks.jacocoTestReport {
+    dependsOn(tasks.test) // tests are required to run before generating the report
+}
+
 application {
-    mainClass = "com.fileservice.Application"
+    mainClass = mainClassName
 }
 
 repositories {
@@ -60,6 +81,7 @@ dependencies {
     testImplementation("org.mockito:mockito-junit-jupiter:4.5.1")
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.2")
     testImplementation("org.junit-pioneer:junit-pioneer:2.3.0")
+    implementation("org.jacoco:org.jacoco.core:0.8.13")
 }
 
 tasks.test {
