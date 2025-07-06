@@ -16,14 +16,15 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@EnabledIfEnvironmentVariable(named = "INTEG_TEST_TEST_ALL_OPERATION", matches = "ENABLED")
-public class FileOperationServiceIntegrationTest extends BaseFileOperationServiceIntegrationTest {
+@EnabledIfEnvironmentVariable(named = "INTEG_TEST", matches = "ENABLED")
+public class FileOperationServiceNonAppendIntegrationTest extends BaseFileOperationServiceIntegrationTest {
 
-    public FileOperationServiceIntegrationTest() throws MalformedURLException {
+    public FileOperationServiceNonAppendIntegrationTest() throws MalformedURLException {
+
     }
 
     @Test
-    void testAllOperationHappyPath() throws IOException, JSONRPC2SessionException {
+    void testOperationsExceptAppendData_HappyPath() throws IOException, JSONRPC2SessionException {
 
         // delete file if previous tests didn't delete it
         callServer("delete", Arrays.asList("test.txt", true));
@@ -45,25 +46,9 @@ public class FileOperationServiceIntegrationTest extends BaseFileOperationServic
         assertEquals("test.txt", fileInfo.getName());
         assertEquals(0, fileInfo.getSize());
 
-        // write to file
-        result = callServerAndVCastnResult("append", Arrays.asList("test/test.txt", "Hello"), Boolean.class);
-        assertTrue(result);
-
         // read the file
         String content = callServerAndVCastnResult("read", Arrays.asList("test/test.txt", 0, 10000), String.class);
-        assertEquals("Hello", content);
-
-        // append to file
-        result = callServerAndVCastnResult("append", Arrays.asList("test/test.txt", " world!"), Boolean.class);
-        assertTrue(result);
-
-        // read the entire file
-        content = callServerAndVCastnResult("read", Arrays.asList("test/test.txt", 0, 10000), String.class);
-        assertEquals("Hello world!", content);
-
-        // read the file partially
-        content = callServerAndVCastnResult("read", Arrays.asList("test/test.txt", 6, 5), String.class);
-        assertEquals("world", content);
+        assertEquals("", content);
 
         // create nested folder
         result = callServerAndVCastnResult("create", Arrays.asList("test/nested", "DIRECTORY"), Boolean.class);
@@ -91,7 +76,6 @@ public class FileOperationServiceIntegrationTest extends BaseFileOperationServic
         // list the root dir
         JSONArray list = callServerAndVCastnResult("listDirectory", List.of("."), JSONArray.class);
         assertEquals("[]", JSONArray.toJSONString(list));
-
     }
 
 }
